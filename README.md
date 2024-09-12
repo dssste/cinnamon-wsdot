@@ -1,1 +1,1 @@
-Workspace dots, a downgrade from cinnamon's Workspace switcher
+Cinnamon's Workspace switcher, but all workspaces are shown as ```•```
