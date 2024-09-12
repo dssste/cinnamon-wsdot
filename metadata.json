@@ -1,0 +1,9 @@
+{
+    "uuid": "wsdot@dssste",
+    "name": "Workspace Dots",
+    "description": "Displays workspaces as dots.",
+    "icon": "workspace",
+    "author": "dssste",
+    "version": "1.0",
+    "max-instances": 1
+}
