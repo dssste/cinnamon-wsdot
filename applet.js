@@ -10,7 +10,30 @@ const SignalManager = imports.misc.signalManager;
 const ModalDialog = imports.ui.modalDialog;
 const Pango = imports.gi.Pango;
 
-class WorkspaceButton {
+function removeWorkspaceAtIndex(index) {
+	if (global.workspace_manager.n_workspaces <= 1 ||
+		index >= global.workspace_manager.n_workspaces) {
+		return;
+	}
+
+	const removeAction = () => {
+		Main._removeWorkspace(global.workspace_manager.get_workspace_by_index(index));
+	};
+
+	if (!Main.hasDefaultWorkspaceName(index)) {
+		let prompt = _("Are you sure you want to remove workspace \"%s\"?\n\n").format(
+			Main.getWorkspaceName(index)
+		);
+
+		let confirm = new ModalDialog.ConfirmDialog(prompt, removeAction);
+		confirm.open();
+	}
+	else {
+		removeAction();
+	}
+}
+
+class SimpleButton {
 	constructor(index, applet) {
 		this.index = index;
 		this.applet = applet;
@@ -21,6 +44,8 @@ class WorkspaceButton {
 
 		this.ws_signals.connect(this.workspace, "window-added", this.update, this);
 		this.ws_signals.connect(this.workspace, "window-removed", this.update, this);
+
+		this.ws_signals.connect_after(Main.wmSettings, "changed::workspace-names", this.updateName, this);
 
 		this.actor = new St.Button({ name: 'workspaceButton',
 			style_class: 'workspace-button',
@@ -45,9 +70,15 @@ class WorkspaceButton {
 		}
 	}
 
+	updateName() {
+		this.workspace_name = Main.getWorkspaceName(this.index);
+	}
+
 	onClicked(actor, event) {
 		if (event.get_button() == 1) {
 			Main.wm.moveToWorkspace(this.workspace);
+		} else if (event.get_button() == 2) {
+			removeWorkspaceAtIndex(this.index);
 		}
 	}
 
@@ -74,7 +105,7 @@ class WorkspaceButton {
 
 	destroy() {
 		this.ws_signals.disconnectAllSignals();
-		this.ctor.destroy();
+		this.actor.destroy();
 	}
 }
 
@@ -109,10 +140,30 @@ class CinnamonWorkspaceSwitcher extends Applet.Applet {
 				Main.expo.toggle();
 		}));
 		this._applet_context_menu.addMenuItem(expoMenuItem);
+
+		let addWorkspaceMenuItem = new PopupMenu.PopupIconMenuItem (_("Add a new workspace"), "list-add", St.IconType.SYMBOLIC);
+		addWorkspaceMenuItem.connect('activate', Lang.bind(this, function() {
+			Main._addWorkspace();
+		}));
+		this._applet_context_menu.addMenuItem(addWorkspaceMenuItem);
+
+		this.removeWorkspaceMenuItem = new PopupMenu.PopupIconMenuItem (_("Remove the current workspace"), "list-remove", St.IconType.SYMBOLIC);
+		this.removeWorkspaceMenuItem.connect('activate', this.removeCurrentWorkspace.bind(this));
+		this._applet_context_menu.addMenuItem(this.removeWorkspaceMenuItem);
+		this.removeWorkspaceMenuItem.setSensitive(global.workspace_manager.n_workspaces > 1);
 	}
 
 	onWorkspacesUpdated() {
+		this.removeWorkspaceMenuItem.setSensitive(global.workspace_manager.n_workspaces > 1);
 		this._createButtons();
+	}
+
+	removeCurrentWorkspace() {
+		if (global.workspace_manager.n_workspaces <= 1) {
+			return;
+		}
+		this.workspace_index = global.workspace_manager.get_active_workspace_index();
+		removeWorkspaceAtIndex(this.workspace_index);
 	}
 
 	_onWorkspaceChanged(wm, from, to) {
@@ -156,23 +207,16 @@ class CinnamonWorkspaceSwitcher extends Applet.Applet {
 		}
 
 		this.actor.set_style_class_name('workspace-switcher');
-
 		this.actor.set_important(true);
 
 		this.buttons = [];
 		for (let i = 0; i < global.workspace_manager.n_workspaces; ++i) {
-			this.buttons[i] = new WorkspaceButton(i, this);
-
+			this.buttons[i] = new SimpleButton(i, this);
 			this.actor.add_actor(this.buttons[i].actor);
 			this.buttons[i].show();
 		}
 
 		this.signals.disconnect("notify::focus-window");
-	}
-
-	_onPositionChanged() {
-		let button = this.buttons[global.workspace_manager.get_active_workspace_index()];
-		button.update();
 	}
 
 	on_applet_removed_from_panel() {
