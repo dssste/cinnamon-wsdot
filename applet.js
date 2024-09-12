@@ -1,14 +1,11 @@
 const St = imports.gi.St;
-const Clutter = imports.gi.Clutter;
 const Lang = imports.lang;
 const Applet = imports.ui.applet;
 const Main = imports.ui.main;
 const Mainloop = imports.mainloop;
-const Meta = imports.gi.Meta;
 const PopupMenu = imports.ui.popupMenu;
 const SignalManager = imports.misc.signalManager;
 const ModalDialog = imports.ui.modalDialog;
-const Pango = imports.gi.Pango;
 
 function removeWorkspaceAtIndex(index) {
 	if (global.workspace_manager.n_workspaces <= 1 ||
@@ -58,9 +55,10 @@ class SimpleButton {
 			this.actor.add_style_class_name('vertical');
 		}
 
-		let label = new St.Label({ text: "-" });
+		let label = new St.Label({ text: "•" });
 		this.actor.set_child(label);
 		this.update();
+		this.actor.set_style('background: transparent; border: none;');
 	}
 
 	show() {
